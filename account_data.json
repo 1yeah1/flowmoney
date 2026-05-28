@@ -1,5 +1,41 @@
 {
-  "records": [],
-  "month_budget": 3000,
-  "dark_mode": false
+  "records": [
+    {
+      "id": "20260528135306",
+      "type": "支出",
+      "category": "衣服",
+      "amount": -200.0,
+      "date": "2026-05-13",
+      "remark": ""
+    },
+    {
+      "id": "20260528135235",
+      "type": "支出",
+      "category": "餐饮",
+      "amount": -100.0,
+      "date": "2026-05-28",
+      "remark": "brunch"
+    },
+    {
+      "id": "20260528135221",
+      "type": "收入",
+      "category": "工资",
+      "amount": 20000.0,
+      "date": "2026-05-28",
+      "remark": "5月"
+    }
+  ],
+  "month_budget": 0,
+  "dark_mode": false,
+  "custom_categories": [
+    "餐饮",
+    "交通",
+    "购物",
+    "娱乐",
+    "学习",
+    "住宿",
+    "工资",
+    "其他",
+    "衣服"
+  ]
 }
