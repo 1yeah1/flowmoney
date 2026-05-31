@@ -1,7 +1,8 @@
 import streamlit as st
 import json
 import os
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
+from collections import defaultdict
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -17,10 +18,11 @@ def init_data():
     if not os.path.exists(DATA_FILE):
         init_dict = {
             "records": [],
+            "deleted_records": [],
             "month_budget": 3000,
             "dark_mode": False,
             "custom_categories": ["餐饮", "交通", "购物", "娱乐", "学习", "住宿", "工资", "其他"],
-            "accounts": ["现金", "微信", "支付宝", "银行卡"]  # 初始化默认账户
+            "accounts": ["现金", "微信", "支付宝", "银行卡"]
         }
         with open(DATA_FILE, "w", encoding="utf-8") as f:
             json.dump(init_dict, f, ensure_ascii=False, indent=2)
@@ -43,7 +45,7 @@ st.caption("大学生个人财务管理")
 
 menu = st.sidebar.radio(
     "功能导航",
-    ["首页仪表盘", "添加记账", "最近5条记录", "日期范围查询", "数据分析", "数据导出", "系统设置"]
+    ["首页仪表盘", "添加记账", "最近5条记录", "日期范围查询", "数据分析", "消费趋势图表", "数据导出", "回收站", "系统设置"]
 )
 
 def filter_records_by_date_account(records, start_date, end_date, target_account=None):
@@ -106,6 +108,11 @@ if menu == "首页仪表盘":
     today_cost = get_today_cost(filter_records)
     left_budget = budget - month_expense
 
+    if left_budget < 0:
+        st.error(f"⚠️ 本月已超支 ¥{abs(left_budget):.2f}！当前预算 ¥{budget:.2f}，已支出 ¥{month_expense:.2f}")
+    elif left_budget < budget * 0.2:
+        st.warning(f"⚡ 预算剩余不足 20%，仅剩 ¥{left_budget:.2f}，请注意控制支出")
+
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.metric("本月总收入", f"¥{month_income:.2f}", delta_color="normal")
@@ -114,7 +121,7 @@ if menu == "首页仪表盘":
     with col3:
         st.metric("今日花费", f"¥{today_cost:.2f}")
     with col4:
-        st.metric("剩余预算", f"¥{left_budget:.2f}")
+        st.metric("剩余预算", f"¥{left_budget:.2f}", delta="inverse" if left_budget < 0 else "normal")
 
 elif menu == "添加记账":
     st.subheader("✍️ 新增收支记录")
@@ -181,6 +188,14 @@ elif menu == "添加记账":
             save_data(data)
             st.success(f"✅ 记账成功！账户：{select_account} 分类：{select_cate}")
 
+            # 预算超支提醒
+            current_month = datetime.now().strftime("%Y-%m")
+            month_records = [r for r in data["records"] if r["date"].startswith(current_month)]
+            month_expense = abs(sum(r["amount"] for r in month_records if r["type"] == "支出"))
+            if month_expense > data["month_budget"]:
+                over = month_expense - data["month_budget"]
+                st.error(f"⚠️ 本月已超支 ¥{over:.2f}！预算 ¥{data['month_budget']:.2f}，已支出 ¥{month_expense:.2f}")
+
 elif menu == "最近5条记录":
     st.subheader("📜 最近5条记账记录")
     records = data["records"]
@@ -196,9 +211,17 @@ elif menu == "最近5条记录":
     else:
         show_records = filter_records[:5]
         for idx, rec in enumerate(show_records, 1):
-            st.write(f"**第{idx}条**")
-            st.write(f"日期：{rec['date']} | 账户：{rec['account']} | 类型：{rec['type']} | 分类：{rec['category']}")
-            st.write(f"金额：¥{abs(rec['amount']):.2f} | 备注：{rec['remark']}")
+            col_a, col_b = st.columns([5, 1])
+            with col_a:
+                st.write(f"**第{idx}条**")
+                st.write(f"日期：{rec['date']} | 账户：{rec['account']} | 类型：{rec['type']} | 分类：{rec['category']}")
+                st.write(f"金额：¥{abs(rec['amount']):.2f} | 备注：{rec['remark']}")
+            with col_b:
+                if st.button("🗑️", key=f"del_recent_{rec['id']}", help="删除此记录"):
+                    data["deleted_records"].insert(0, rec)
+                    data["records"].remove(rec)
+                    save_data(data)
+                    st.rerun()
             st.divider()
 
 elif menu == "日期范围查询":
@@ -225,8 +248,16 @@ elif menu == "日期范围查询":
         else:
             st.success(f"共查询到 {len(filter_rec)} 条记录")
             for idx, rec in enumerate(filter_rec, 1):
-                st.write(f"**{idx}.** 日期：{rec['date']} | 账户：{rec['account']} | {rec['type']} | 分类：{rec['category']}")
-                st.write(f"金额：¥{abs(rec['amount']):.2f} | 备注：{rec['remark']}")
+                col_a, col_b = st.columns([5, 1])
+                with col_a:
+                    st.write(f"**{idx}.** 日期：{rec['date']} | 账户：{rec['account']} | {rec['type']} | 分类：{rec['category']}")
+                    st.write(f"金额：¥{abs(rec['amount']):.2f} | 备注：{rec['remark']}")
+                with col_b:
+                    if st.button("🗑️", key=f"del_range_{rec['id']}", help="删除此记录"):
+                        data["deleted_records"].insert(0, rec)
+                        data["records"].remove(rec)
+                        save_data(data)
+                        st.rerun()
                 st.divider()
 
 elif menu == "数据分析":
@@ -289,6 +320,133 @@ elif menu == "数据分析":
                 fig_bar.update_layout(title="月度收入/支出对比", xaxis_title="月份", yaxis_title="金额(¥)")
                 st.plotly_chart(fig_bar, use_container_width=True)
 
+elif menu == "消费趋势图表":
+    st.subheader("📈 消费趋势图表")
+    records = data["records"]
+
+    if not records:
+        st.warning("暂无记账数据，无法生成趋势图表")
+    else:
+        today = date.today()
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            select_acc = st.selectbox("筛选账户", ["全部账户"] + account_list, key="trend_acc")
+        with col2:
+            time_range = st.selectbox("时间范围", ["最近7天", "最近30天", "最近90天", "自定义"])
+        with col3:
+            trend_type = st.selectbox("显示类型", ["支出趋势", "收入趋势", "收支对比"])
+
+        if time_range == "自定义":
+            col_a, col_b = st.columns(2)
+            with col_a:
+                start_date = st.date_input("开始日期", today - timedelta(days=30))
+            with col_b:
+                end_date = st.date_input("结束日期", today)
+        else:
+            days_map = {"最近7天": 7, "最近30天": 30, "最近90天": 90}
+            end_date = today
+            start_date = today - timedelta(days=days_map[time_range])
+
+        if start_date > end_date:
+            st.error("开始日期不能晚于结束日期")
+        else:
+            if select_acc != "全部账户":
+                filtered = filter_records_by_date_account(records, start_date, end_date, select_acc)
+            else:
+                filtered = filter_records_by_date_account(records, start_date, end_date)
+
+            if not filtered:
+                st.info("该时间段内暂无记账记录")
+            else:
+                daily_income = defaultdict(float)
+                daily_expense = defaultdict(float)
+
+                for r in filtered:
+                    d = r["date"]
+                    if r["type"] == "收入":
+                        daily_income[d] += r["amount"]
+                    else:
+                        daily_expense[d] += abs(r["amount"])
+
+                date_list = []
+                current = start_date
+                while current <= end_date:
+                    date_list.append(str(current))
+                    current += timedelta(days=1)
+
+                income_values = [daily_income.get(d, 0) for d in date_list]
+                expense_values = [daily_expense.get(d, 0) for d in date_list]
+
+                if trend_type == "支出趋势":
+                    fig = px.line(
+                        x=date_list, y=expense_values,
+                        title=f"每日支出趋势 ({start_date} ~ {end_date})",
+                        labels={"x": "日期", "y": "支出金额 (¥)"},
+                        markers=True
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+
+                    total_expense = sum(expense_values)
+                    avg_expense = total_expense / len(date_list) if date_list else 0
+                    max_expense = max(expense_values) if expense_values else 0
+                    col_a, col_b, col_c = st.columns(3)
+                    col_a.metric("总支出", f"¥{total_expense:.2f}")
+                    col_b.metric("日均支出", f"¥{avg_expense:.2f}")
+                    col_c.metric("单日最高", f"¥{max_expense:.2f}")
+
+                elif trend_type == "收入趋势":
+                    fig = px.line(
+                        x=date_list, y=income_values,
+                        title=f"每日收入趋势 ({start_date} ~ {end_date})",
+                        labels={"x": "日期", "y": "收入金额 (¥)"},
+                        markers=True
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+
+                    total_income = sum(income_values)
+                    avg_income = total_income / len(date_list) if date_list else 0
+                    col_a, col_b = st.columns(2)
+                    col_a.metric("总收入", f"¥{total_income:.2f}")
+                    col_b.metric("日均收入", f"¥{avg_income:.2f}")
+
+                else:
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(x=date_list, y=income_values, mode='lines+markers', name='收入', line=dict(color='green')))
+                    fig.add_trace(go.Scatter(x=date_list, y=expense_values, mode='lines+markers', name='支出', line=dict(color='red')))
+                    fig.update_layout(
+                        title=f"每日收支对比趋势 ({start_date} ~ {end_date})",
+                        xaxis_title="日期",
+                        yaxis_title="金额 (¥)"
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+
+elif menu == "回收站":
+    st.subheader("🗑️ 回收站")
+    deleted = data.get("deleted_records", [])
+
+    if not deleted:
+        st.info("回收站为空")
+    else:
+        st.caption(f"共 {len(deleted)} 条已删除的记录")
+        for idx, rec in enumerate(deleted, 1):
+            col_a, col_b, col_c = st.columns([4, 1, 1])
+            with col_a:
+                st.write(f"**{idx}.** 日期：{rec['date']} | 账户：{rec['account']} | {rec['type']} | 分类：{rec['category']}")
+                st.write(f"金额：¥{abs(rec['amount']):.2f} | 备注：{rec['remark']}")
+            with col_b:
+                if st.button("♻️ 还原", key=f"restore_{rec['id']}"):
+                    data["records"].insert(0, rec)
+                    data["deleted_records"].remove(rec)
+                    save_data(data)
+                    st.rerun()
+            with col_c:
+                if st.button("❌ 彻底删除", key=f"delete_perm_{rec['id']}"):
+                    data["deleted_records"].remove(rec)
+                    save_data(data)
+                    st.rerun()
+            st.divider()
+
 elif menu == "数据导出":
     st.subheader("📥 导出记账数据")
     records = data["records"]
@@ -314,7 +472,24 @@ elif menu == "系统设置":
         st.success("预算修改成功")
 
     st.divider()
+    st.subheader("🗑️ 危险操作")
+    if "confirm_clear" not in st.session_state:
+        st.session_state.confirm_clear = False
+
     if st.button("清空所有记账数据", type="primary"):
-        data["records"] = []
-        save_data(data)
-        st.warning("所有数据已清空！")
+        st.session_state.confirm_clear = True
+
+    if st.session_state.confirm_clear:
+        st.error("⚠️ 确定要清空所有数据吗？此操作不可撤销！")
+        col_a, col_b = st.columns(2)
+        with col_a:
+            if st.button("确认清空", type="primary"):
+                data["records"] = []
+                data["deleted_records"] = []
+                save_data(data)
+                st.session_state.confirm_clear = False
+                st.rerun()
+        with col_b:
+            if st.button("取消"):
+                st.session_state.confirm_clear = False
+                st.rerun()
