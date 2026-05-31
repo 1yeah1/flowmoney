@@ -182,19 +182,25 @@ elif menu == "添加记账":
                 st.success(f"账户【{del_acc}】已删除")
                 st.rerun()
 
-    bill_type = st.selectbox("收支类型", ["支出", "收入"])
+    st.markdown("---")
+    st.subheader("📝 记账")
+    col_type, col_acc = st.columns(2)
+    with col_type:
+        bill_type = st.selectbox("收支类型", ["支出", "收入"], key="bill_type")
+    with col_acc:
+        select_account = st.selectbox("记账账户", account_list, key="add_acc")
+
     current_categories = income_categories if bill_type == "收入" else expense_categories
 
     with st.form("add_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
         with col1:
-            select_cate = st.selectbox("选择分类", current_categories)
-            select_account = st.selectbox("选择记账账户", account_list)
+            select_cate = st.selectbox("选择分类", current_categories, key="add_cate")
         with col2:
-            amount = st.number_input("金额", min_value=0.01, step=0.01)
-            bill_date = st.date_input("选择日期", date.today())
-        
-        remark = st.text_input("备注信息（选填）")
+            amount = st.number_input("金额", min_value=0.01, step=0.01, key="add_amount")
+            bill_date = st.date_input("选择日期", date.today(), key="add_date")
+
+        remark = st.text_input("备注信息（选填）", key="add_remark")
         submit_btn = st.form_submit_button("提交记账")
 
         if submit_btn:
