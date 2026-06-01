@@ -36,10 +36,31 @@ def save_data(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
+def cleanup_deleted_records(data, max_days=30):
+    if not data.get("deleted_records"):
+        return
+    from datetime import date as date_cls
+    cutoff = str(date_cls.today() - timedelta(days=max_days))
+    original_len = len(data["deleted_records"])
+    data["deleted_records"] = [r for r in data["deleted_records"] if r.get("date", "") > cutoff]
+    removed = original_len - len(data["deleted_records"])
+    if removed > 0:
+        save_data(data)
+
 init_data()
 data = load_data()
-expense_categories = data.get("expense_categories", ["餐饮", "交通", "购物", "娱乐", "学习", "住宿", "医疗", "其他"])
-income_categories = data.get("income_categories", ["工资", "兼职", "奖学金", "理财", "投资分红", "礼金", "其他"])
+
+if "expense_categories" not in data:
+    data["expense_categories"] = ["餐饮", "交通", "购物", "娱乐", "学习", "住宿", "医疗", "其他"]
+if "income_categories" not in data:
+    data["income_categories"] = ["工资", "兼职", "奖学金", "理财", "投资分红", "礼金", "其他"]
+if "deleted_records" not in data:
+    data["deleted_records"] = []
+save_data(data)
+
+cleanup_deleted_records(data)
+expense_categories = data["expense_categories"]
+income_categories = data["income_categories"]
 account_list = data["accounts"]
 
 st.title("💰 FlowMoney ")
@@ -142,11 +163,32 @@ elif menu == "添加记账":
                     st.rerun()
             with col_b:
                 del_exp_cate = st.selectbox("删除支出分类", expense_categories, key="del_exp_cate")
+                if "confirm_del_exp" not in st.session_state:
+                    st.session_state.confirm_del_exp = ""
+                
                 if st.button("删除", key="del_exp_cate_btn") and len(expense_categories) > 1:
-                    data["expense_categories"].remove(del_exp_cate)
-                    save_data(data)
-                    st.success(f"支出分类【{del_exp_cate}】已删除")
-                    st.rerun()
+                    st.session_state.confirm_del_exp = del_exp_cate
+                
+                if st.session_state.confirm_del_exp == del_exp_cate:
+                    st.warning(f"⚠️ 确定要删除「{del_exp_cate}」分类吗？关联的历史记录将被更新为「其他」")
+                    col_x, col_y = st.columns(2)
+                    with col_x:
+                        if st.button("确认删除", key=f"confirm_del_exp_{del_exp_cate}"):
+                            for r in data["records"]:
+                                if r["type"] == "支出" and r["category"] == del_exp_cate:
+                                    r["category"] = "其他"
+                            for r in data.get("deleted_records", []):
+                                if r["type"] == "支出" and r["category"] == del_exp_cate:
+                                    r["category"] = "其他"
+                            data["expense_categories"].remove(del_exp_cate)
+                            save_data(data)
+                            st.success(f"✅ 支出分类【{del_exp_cate}】已删除，历史记录同步更新为「其他」")
+                            st.session_state.confirm_del_exp = ""
+                            st.rerun()
+                    with col_y:
+                        if st.button("取消", key=f"cancel_del_exp_{del_exp_cate}"):
+                            st.session_state.confirm_del_exp = ""
+                            st.rerun()
 
         with tab_inc:
             col_a, col_b = st.columns(2)
@@ -159,11 +201,32 @@ elif menu == "添加记账":
                     st.rerun()
             with col_b:
                 del_inc_cate = st.selectbox("删除收入分类", income_categories, key="del_inc_cate")
+                if "confirm_del_inc" not in st.session_state:
+                    st.session_state.confirm_del_inc = ""
+                
                 if st.button("删除", key="del_inc_cate_btn") and len(income_categories) > 1:
-                    data["income_categories"].remove(del_inc_cate)
-                    save_data(data)
-                    st.success(f"收入分类【{del_inc_cate}】已删除")
-                    st.rerun()
+                    st.session_state.confirm_del_inc = del_inc_cate
+                
+                if st.session_state.confirm_del_inc == del_inc_cate:
+                    st.warning(f"⚠️ 确定要删除「{del_inc_cate}」分类吗？关联的历史记录将被更新为「其他」")
+                    col_x, col_y = st.columns(2)
+                    with col_x:
+                        if st.button("确认删除", key=f"confirm_del_inc_{del_inc_cate}"):
+                            for r in data["records"]:
+                                if r["type"] == "收入" and r["category"] == del_inc_cate:
+                                    r["category"] = "其他"
+                            for r in data.get("deleted_records", []):
+                                if r["type"] == "收入" and r["category"] == del_inc_cate:
+                                    r["category"] = "其他"
+                            data["income_categories"].remove(del_inc_cate)
+                            save_data(data)
+                            st.success(f"✅ 收入分类【{del_inc_cate}】已删除，历史记录同步更新为「其他」")
+                            st.session_state.confirm_del_inc = ""
+                            st.rerun()
+                    with col_y:
+                        if st.button("取消", key=f"cancel_del_inc_{del_inc_cate}"):
+                            st.session_state.confirm_del_inc = ""
+                            st.rerun()
 
     with st.expander("💳 管理记账账户（可新增/删除）"):
         new_acc = st.text_input("输入新账户名称")
@@ -365,7 +428,19 @@ elif menu == "数据分析":
                 fig = go.Figure()
                 fig.add_trace(go.Scatter(x=date_list, y=income_vals, mode='lines+markers', name='收入', line=dict(color='green')))
                 fig.add_trace(go.Scatter(x=date_list, y=expense_vals, mode='lines+markers', name='支出', line=dict(color='red')))
-                fig.update_layout(title="每日收支趋势", xaxis_title="日期", yaxis_title="金额 (¥)")
+                num_dates = len(date_list)
+                tickformat = "%m/%d" if num_dates <= 31 else "%y/%m/%d"
+                fig.update_layout(
+                    title="每日收支趋势",
+                    xaxis_title="日期",
+                    yaxis_title="金额 (¥)",
+                    xaxis=dict(
+                        tickformat=tickformat,
+                        tickangle=-45 if num_dates > 15 else 0,
+                        tickmode="auto",
+                        nticks=min(num_dates, 10)
+                    )
+                )
                 st.plotly_chart(fig, use_container_width=True)
 
                 col_a, col_b = st.columns(2)
@@ -374,17 +449,30 @@ elif menu == "数据分析":
 
 elif menu == "回收站":
     st.subheader("🗑️ 回收站")
+    st.caption("⚠️ 记录保留 30 天，超过将自动清除")
     deleted = data.get("deleted_records", [])
 
     if not deleted:
         st.info("回收站为空")
     else:
         st.caption(f"共 {len(deleted)} 条已删除的记录")
+        today = date.today()
         for idx, rec in enumerate(deleted, 1):
+            rec_date = date.fromisoformat(rec["date"])
+            days_since_delete = (today - rec_date).days
+            days_left = 30 - days_since_delete
+            
+            if days_left <= 3:
+                expire_style = ":red[⚠️ 仅剩 {} 天]".format(days_left)
+            elif days_left <= 7:
+                expire_style = ":orange[⚡ 仅剩 {} 天]".format(days_left)
+            else:
+                expire_style = f"剩余 {days_left} 天"
+            
             col_a, col_b, col_c = st.columns([4, 1, 1])
             with col_a:
                 st.write(f"**{idx}.** 日期：{rec['date']} | 账户：{rec['account']} | {rec['type']} | 分类：{rec['category']}")
-                st.write(f"金额：¥{abs(rec['amount']):.2f} | 备注：{rec['remark']}")
+                st.write(f"金额：¥{abs(rec['amount']):.2f} | 备注：{rec['remark']} | {expire_style}")
             with col_b:
                 if st.button("♻️ 还原", key=f"restore_{rec['id']}"):
                     data["records"].insert(0, rec)
