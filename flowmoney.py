@@ -155,6 +155,18 @@ elif menu == "添加记账":
         with tab_exp:
             col_a, col_b = st.columns(2)
             with col_a:
+                st.markdown("**💸 支出分类推荐：**")
+                exp_recommend = ["餐饮", "交通", "购物", "娱乐", "学习", "住宿", "医疗", "健身", "通讯", "水果", "日用品"]
+                exp_filtered = [t for t in exp_recommend if t not in expense_categories]
+                if exp_filtered:
+                    cols = st.columns(4)
+                    for i, tag in enumerate(exp_filtered):
+                        with cols[i % 4]:
+                            if st.button(tag, key=f"exp_tag_{i}", use_container_width=True):
+                                st.session_state["new_exp_cate"] = tag
+                                st.rerun()
+                else:
+                    st.caption("✅ 支出分类已包含所有推荐项")
                 new_exp_cate = st.text_input("新增支出分类", key="new_exp_cate")
                 if st.button("添加", key="add_exp_cate") and new_exp_cate.strip() and new_exp_cate.strip() not in expense_categories:
                     data["expense_categories"].append(new_exp_cate.strip())
@@ -193,6 +205,18 @@ elif menu == "添加记账":
         with tab_inc:
             col_a, col_b = st.columns(2)
             with col_a:
+                st.markdown("**💰 收入分类推荐：**")
+                inc_recommend = ["工资", "兼职", "奖金", "佣金", "投资", "租赁", "理财", "礼金", "退休金", "补偿"]
+                inc_filtered = [t for t in inc_recommend if t not in income_categories]
+                if inc_filtered:
+                    cols = st.columns(4)
+                    for i, tag in enumerate(inc_filtered):
+                        with cols[i % 4]:
+                            if st.button(tag, key=f"inc_tag_{i}", use_container_width=True):
+                                st.session_state["new_inc_cate"] = tag
+                                st.rerun()
+                else:
+                    st.caption("✅ 收入分类已包含所有推荐项")
                 new_inc_cate = st.text_input("新增收入分类", key="new_inc_cate")
                 if st.button("添加", key="add_inc_cate") and new_inc_cate.strip() and new_inc_cate.strip() not in income_categories:
                     data["income_categories"].append(new_inc_cate.strip())
