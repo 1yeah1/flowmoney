@@ -1,0 +1,139 @@
+{
+  "records": [
+    {
+      "id": "20260605172214",
+      "type": "收入",
+      "category": "工资",
+      "account": "现金",
+      "amount": 300.0,
+      "date": "2026-06-05",
+      "remark": ""
+    },
+    {
+      "id": "20260605171645",
+      "type": "支出",
+      "category": "住宿",
+      "account": "现金",
+      "amount": -0.01,
+      "date": "2026-06-05",
+      "remark": "1"
+    },
+    {
+      "id": "20260605165954",
+      "type": "支出",
+      "category": "住宿",
+      "account": "现金",
+      "amount": -120.0,
+      "date": "2026-06-05",
+      "remark": ""
+    },
+    {
+      "id": "20260605165930",
+      "type": "支出",
+      "category": "餐饮",
+      "account": "现金",
+      "amount": -120.0,
+      "date": "2026-06-05",
+      "remark": ""
+    },
+    {
+      "id": "20260602101912",
+      "type": "支出",
+      "category": "住宿",
+      "account": "现金",
+      "amount": -0.01,
+      "date": "2026-06-02",
+      "remark": ""
+    },
+    {
+      "id": "20260531215408",
+      "type": "支出",
+      "category": "其他",
+      "account": "现金",
+      "amount": -0.01,
+      "date": "2026-05-31",
+      "remark": ""
+    },
+    {
+      "id": "20260531215402",
+      "type": "支出",
+      "category": "其他",
+      "account": "现金",
+      "amount": -0.01,
+      "date": "2026-05-31",
+      "remark": ""
+    }
+  ],
+  "month_budget": 3000,
+  "dark_mode": false,
+  "custom_categories": [
+    "餐饮",
+    "交通",
+    "购物",
+    "娱乐",
+    "学习",
+    "住宿",
+    "工资",
+    "其他"
+  ],
+  "accounts": [
+    "现金",
+    "微信",
+    "支付宝",
+    "银行卡"
+  ],
+  "deleted_records": [
+    {
+      "id": "20260605170056",
+      "type": "支出",
+      "category": "住宿",
+      "account": "现金",
+      "amount": -3000.0,
+      "date": "2026-06-05",
+      "remark": ""
+    },
+    {
+      "id": "20260531215724",
+      "type": "收入",
+      "category": "工资",
+      "account": "现金",
+      "amount": 0.01,
+      "date": "2026-05-31",
+      "remark": ""
+    },
+    {
+      "id": "20260531215728",
+      "type": "支出",
+      "category": "其他",
+      "account": "现金",
+      "amount": -0.01,
+      "date": "2026-05-31",
+      "remark": ""
+    },
+    {
+      "id": "20260601102433",
+      "type": "收入",
+      "category": "礼金",
+      "account": "现金",
+      "amount": 0.01,
+      "date": "2026-06-01",
+      "remark": ""
+    }
+  ],
+  "expense_categories": [
+    "住宿",
+    "其他",
+    "餐饮",
+    "交通",
+    "购物"
+  ],
+  "income_categories": [
+    "工资",
+    "兼职",
+    "奖学金",
+    "理财",
+    "投资分红",
+    "礼金",
+    "其他"
+  ]
+}

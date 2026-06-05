@@ -131,6 +131,15 @@ if menu == "首页仪表盘":
     today_cost = get_today_cost(filter_records)
     left_budget = budget - month_expense
 
+    today = date.today()
+    last_day = (date(today.year, today.month + 1, 1) - timedelta(days=1)).day
+    remaining_days = last_day - today.day
+    
+    if remaining_days > 0:
+        daily_budget = left_budget / remaining_days
+    else:
+        daily_budget = 0
+
     if left_budget < 0:
         st.error(f"⚠️ 本月已超支 ¥{abs(left_budget):.2f}！当前预算 ¥{budget:.2f}，已支出 ¥{month_expense:.2f}")
     elif left_budget < budget * 0.2:
@@ -145,6 +154,37 @@ if menu == "首页仪表盘":
         st.metric("今日花费", f"¥{today_cost:.2f}")
     with col4:
         st.metric("剩余预算", f"¥{left_budget:.2f}", delta="inverse" if left_budget < 0 else "normal")
+
+    col5, col6, col7 = st.columns(3)
+    with col5:
+        st.metric("本月剩余天数", f"{remaining_days} 天")
+    with col6:
+        if left_budget < 0:
+            st.metric("今日可用", f"⚠️ 已超支", delta_color="inverse")
+        else:
+            st.metric("今日可用", f"¥{daily_budget:.2f}")
+    with col7:
+        if left_budget < 0:
+            st.metric("状态", "❌ 超支", delta_color="inverse")
+        elif left_budget < budget * 0.2:
+            st.metric("状态", "⚠️ 紧张", delta_color="off")
+        else:
+            st.metric("状态", "✅ 正常", delta_color="normal")
+
+    with st.expander("📋 今日可用计算规则"):
+        st.markdown("""
+        **计算公式：**  
+        `今日可用 = 剩余预算 ÷ 本月剩余天数`
+        
+        **举例说明：**  
+        - 预算 ¥3000 - 已支出 ¥1200 = 剩余 ¥1800  
+        - 剩余 15 天 → 每日可用 ¥120  
+        
+        **状态标记：**  
+        - ✅ 正常：预算剩余 ≥ 20%  
+        - ⚠️ 紧张：预算剩余 < 20%  
+        - ❌ 超支：已超出预算  
+        """)
 
 elif menu == "添加记账":
     st.subheader("✍️ 新增收支记录")
@@ -317,23 +357,19 @@ elif menu == "记账流水":
     st.subheader("📜 记账流水")
     records = data["records"]
 
-    col_filter1, col_filter2 = st.columns(2)
+    col_filter1, col_filter2, col_filter3 = st.columns(3)
     with col_filter1:
         select_acc = st.selectbox("筛选账户", ["全部账户"] + account_list, key="流水_acc")
     with col_filter2:
-        time_range = st.selectbox("时间范围", ["不限", "最近7天", "最近30天", "自定义日期"], key="流水_time")
+        select_type = st.selectbox("收支类型", ["全部", "支出", "收入"], key="流水_type")
+    with col_filter3:
+        months = ["全部月份"] + sorted(set(r["date"][:7] for r in records), reverse=True)
+        select_month = st.selectbox("选择月份", months, key="流水_month")
 
     today = date.today()
-    if time_range == "自定义日期":
-        col_d1, col_d2 = st.columns(2)
-        with col_d1:
-            start = st.date_input("开始日期", date(today.year, today.month, 1), key="流水_start")
-        with col_d2:
-            end = st.date_input("结束日期", today, key="流水_end")
-    elif time_range == "最近7天":
-        start, end = today - timedelta(days=6), today
-    elif time_range == "最近30天":
-        start, end = today - timedelta(days=29), today
+    if select_month != "全部月份":
+        start, end = date.fromisoformat(f"{select_month}-01"), date.fromisoformat(f"{select_month}-01") + timedelta(days=32)
+        end = date(end.year, end.month, 1) - timedelta(days=1)
     else:
         start, end = date(2000, 1, 1), today
 
@@ -341,7 +377,9 @@ elif menu == "记账流水":
         st.error("开始日期不能晚于结束日期")
     else:
         filter_records = [r for r in records if r.get("account", "") == select_acc or select_acc == "全部账户"]
+        filter_records = [r for r in filter_records if select_type == "全部" or r.get("type", "") == select_type]
         filter_records = [r for r in filter_records if start <= date.fromisoformat(r["date"]) <= end]
+        filter_records.sort(key=lambda x: x["date"], reverse=True)
 
         if not filter_records:
             st.info("暂无符合条件的记录")
@@ -352,18 +390,30 @@ elif menu == "记账流水":
             file_name = f"FlowMoney_记账数据_{datetime.now().strftime('%Y%m%d%H%M%S')}.json"
             st.download_button("📥 导出 JSON", data=json_str, file_name=file_name, mime="application/json")
 
-            for idx, rec in enumerate(filter_records, 1):
-                col_a, col_b = st.columns([5, 1])
-                with col_a:
-                    st.write(f"**{idx}.** 日期：{rec['date']} | 账户：{rec['account']} | {rec['type']} | 分类：{rec['category']}")
-                    st.write(f"金额：¥{abs(rec['amount']):.2f} | 备注：{rec['remark']}")
-                with col_b:
-                    if st.button("🗑️", key=f"del_流水_{rec['id']}", help="删除"):
-                        data["deleted_records"].insert(0, rec)
-                        data["records"].remove(rec)
-                        save_data(data)
-                        st.rerun()
-                st.divider()
+            grouped_records = {}
+            for rec in filter_records:
+                month = rec["date"][:7]
+                if month not in grouped_records:
+                    grouped_records[month] = []
+                grouped_records[month].append(rec)
+
+            for month, month_records in grouped_records.items():
+                month_income = sum(r["amount"] for r in month_records if r["type"] == "收入")
+                month_expense = abs(sum(r["amount"] for r in month_records if r["type"] == "支出"))
+                
+                with st.expander(f"📅 {month}（收入 ¥{month_income:.2f} | 支出 ¥{month_expense:.2f} | 共 {len(month_records)} 条）"):
+                    for idx, rec in enumerate(month_records, 1):
+                        col_a, col_b = st.columns([5, 1])
+                        with col_a:
+                            st.write(f"**{idx}.** 日期：{rec['date']} | 账户：{rec['account']} | {rec['type']} | 分类：{rec['category']}")
+                            st.write(f"金额：¥{abs(rec['amount']):.2f} | 备注：{rec['remark']}")
+                        with col_b:
+                            if st.button("🗑️", key=f"del_流水_{rec['id']}", help="删除"):
+                                data["deleted_records"].insert(0, rec)
+                                data["records"].remove(rec)
+                                save_data(data)
+                                st.rerun()
+                        st.divider()
 
 elif menu == "数据分析":
     st.subheader("📈 数据分析")
