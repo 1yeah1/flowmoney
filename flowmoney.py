@@ -595,14 +595,11 @@ elif menu == "回收站":
 
             if "selected_ids" not in st.session_state:
                 st.session_state.selected_ids = set()
-            if "select_all_trash" not in st.session_state:
-                st.session_state.select_all_trash = False
 
             col_select_all, col_deselect, col_count, col_action1, col_action2 = st.columns([2, 2, 2, 2, 2])
             with col_select_all:
                 if st.button("☑️ 全选"):
-                    for rec in filtered_records:
-                        st.session_state.selected_ids.add(rec["id"])
+                    st.session_state.selected_ids = set(rec["id"] for rec in filtered_records)
                     st.rerun()
             with col_deselect:
                 if st.button("☐ 取消全选"):
@@ -638,6 +635,7 @@ elif menu == "回收站":
                     grouped_records[date_key] = []
                 grouped_records[date_key].append(rec)
 
+            global_idx = 0
             for date_key, date_records in grouped_records.items():
                 date_obj = date.fromisoformat(date_key)
                 days_diff = (today - date_obj).days
@@ -659,6 +657,7 @@ elif menu == "回收站":
                 st.divider()
 
                 for idx, rec in enumerate(date_records, 1):
+                    global_idx += 1
                     rec_date = date.fromisoformat(rec["date"])
                     days_left = 30 - (today - rec_date).days
                     
@@ -674,9 +673,10 @@ elif menu == "回收站":
 
                     col_check, col_info, col_action = st.columns([0.5, 5, 2])
                     with col_check:
-                        cb_key = f"cb_trash_{idx}_{rec['id']}"
+                        cb_key = f"cb_trash_{global_idx}_{rec['id']}"
                         is_selected = rec["id"] in st.session_state.selected_ids
-                        if st.checkbox("", value=is_selected, key=cb_key):
+                        checked = st.checkbox("", value=is_selected, key=cb_key)
+                        if checked:
                             st.session_state.selected_ids.add(rec["id"])
                         else:
                             st.session_state.selected_ids.discard(rec["id"])
