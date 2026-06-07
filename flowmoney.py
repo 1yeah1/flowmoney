@@ -600,10 +600,14 @@ elif menu == "回收站":
             with col_select_all:
                 if st.button("☑️ 全选"):
                     st.session_state.selected_ids = set(rec["id"] for rec in filtered_records)
+                    for i, rec in enumerate(filtered_records):
+                        st.session_state[f"cb_trash_{i}"] = True
                     st.rerun()
             with col_deselect:
                 if st.button("☐ 取消全选"):
                     st.session_state.selected_ids.clear()
+                    for i, rec in enumerate(filtered_records):
+                        st.session_state[f"cb_trash_{i}"] = False
                     st.rerun()
             with col_count:
                 st.info(f"已选中 {len(st.session_state.selected_ids)} 条")
@@ -657,6 +661,7 @@ elif menu == "回收站":
                 st.divider()
 
                 for idx, rec in enumerate(date_records, 1):
+                    cb_key = f"cb_trash_{global_idx}"
                     global_idx += 1
                     rec_date = date.fromisoformat(rec["date"])
                     days_left = 30 - (today - rec_date).days
@@ -673,7 +678,6 @@ elif menu == "回收站":
 
                     col_check, col_info, col_action = st.columns([0.5, 5, 2])
                     with col_check:
-                        cb_key = f"cb_trash_{global_idx}_{rec['id']}"
                         is_selected = rec["id"] in st.session_state.selected_ids
                         checked = st.checkbox("", value=is_selected, key=cb_key)
                         if checked:
