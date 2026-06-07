@@ -357,34 +357,51 @@ elif menu == "记账流水":
     st.subheader("📜 记账流水")
     records = data["records"]
 
-    col_filter1, col_filter2, col_filter3 = st.columns(3)
-    with col_filter1:
-        select_acc = st.selectbox("筛选账户", ["全部账户"] + account_list, key="流水_acc")
-    with col_filter2:
-        select_type = st.selectbox("收支类型", ["全部", "支出", "收入"], key="流水_type")
-    with col_filter3:
-        months = ["全部月份"] + sorted(set(r["date"][:7] for r in records), reverse=True)
-        select_month = st.selectbox("选择月份", months, key="流水_month")
+    col_search, col_acc, col_type = st.columns([3, 2, 2])
+    with col_search:
+        search_keyword = st.text_input("🔍 搜索备注", key="流水_search")
+    with col_acc:
+        select_acc = st.selectbox("🏦 账户筛选", ["全部账户"] + account_list, key="流水_acc")
+    with col_type:
+        select_type = st.selectbox("💹 收支类型", ["全部", "支出", "收入"], key="流水_type")
 
-    today = date.today()
-    if select_month != "全部月份":
-        start, end = date.fromisoformat(f"{select_month}-01"), date.fromisoformat(f"{select_month}-01") + timedelta(days=32)
-        end = date(end.year, end.month, 1) - timedelta(days=1)
-    else:
-        start, end = date(2000, 1, 1), today
+    col_cate, col_date_range = st.columns([2, 3])
+    with col_cate:
+        all_categories = expense_categories + income_categories
+        select_cate = st.selectbox("🏷️ 分类筛选", ["全部分类"] + all_categories, key="流水_cate")
+    with col_date_range:
+        col_d1, col_d2 = st.columns(2)
+        with col_d1:
+            start_date = st.date_input("开始日期", date.today() - timedelta(days=30), key="流水_start")
+        with col_d2:
+            end_date = st.date_input("结束日期", date.today(), key="流水_end")
 
-    if start > end:
+    if start_date > end_date:
         st.error("开始日期不能晚于结束日期")
     else:
-        filter_records = [r for r in records if r.get("account", "") == select_acc or select_acc == "全部账户"]
-        filter_records = [r for r in filter_records if select_type == "全部" or r.get("type", "") == select_type]
-        filter_records = [r for r in filter_records if start <= date.fromisoformat(r["date"]) <= end]
+        filter_records = []
+        for r in records:
+            rec_date = date.fromisoformat(r["date"])
+            
+            if search_keyword and search_keyword.lower() not in r.get("remark", "").lower():
+                continue
+            if select_acc != "全部账户" and r.get("account") != select_acc:
+                continue
+            if select_type != "全部" and r.get("type") != select_type:
+                continue
+            if select_cate != "全部分类" and r.get("category") != select_cate:
+                continue
+            if not (start_date <= rec_date <= end_date):
+                continue
+            
+            filter_records.append(r)
+
         filter_records.sort(key=lambda x: x["date"], reverse=True)
 
         if not filter_records:
             st.info("暂无符合条件的记录")
         else:
-            st.caption(f"共 {len(filter_records)} 条记录")
+            st.caption(f"共 {len(filter_records)} 条记录（总计 {len(records)} 条）")
 
             json_str = json.dumps(data, ensure_ascii=False, indent=2)
             file_name = f"FlowMoney_记账数据_{datetime.now().strftime('%Y%m%d%H%M%S')}.json"
@@ -392,30 +409,61 @@ elif menu == "记账流水":
 
             grouped_records = {}
             for rec in filter_records:
-                month = rec["date"][:7]
-                if month not in grouped_records:
-                    grouped_records[month] = []
-                grouped_records[month].append(rec)
+                date_key = rec["date"]
+                if date_key not in grouped_records:
+                    grouped_records[date_key] = []
+                grouped_records[date_key].append(rec)
 
-            for month, month_records in grouped_records.items():
-                month_income = sum(r["amount"] for r in month_records if r["type"] == "收入")
-                month_expense = abs(sum(r["amount"] for r in month_records if r["type"] == "支出"))
+            today = date.today()
+            for date_key, date_records in grouped_records.items():
+                date_obj = date.fromisoformat(date_key)
+                days_diff = (today - date_obj).days
                 
-                with st.expander(f"📅 {month}（收入 ¥{month_income:.2f} | 支出 ¥{month_expense:.2f} | 共 {len(month_records)} 条）"):
-                    for idx, rec in enumerate(month_records, 1):
-                        col_a, col_b = st.columns([5, 1])
-                        with col_a:
-                            type_icon = "💸" if rec['type'] == "支出" else "💰"
-                            amount_color = "red" if rec['type'] == "支出" else "green"
-                            st.write(f"**{idx}.** 日期：{rec['date']} | 账户：{rec['account']} | {type_icon} {rec['type']} | 分类：{rec['category']}")
-                            st.write(f"金额：:{amount_color}[¥{abs(rec['amount']):.2f}] | 备注：{rec['remark']}", unsafe_allow_html=True)
-                        with col_b:
+                if days_diff == 0:
+                    date_label = "📅 今天"
+                elif days_diff == 1:
+                    date_label = "📅 昨天"
+                elif days_diff == 2:
+                    date_label = "📅 前天"
+                else:
+                    date_label = f"📅 {date_key}"
+
+                day_income = sum(r["amount"] for r in date_records if r["type"] == "收入")
+                day_expense = abs(sum(r["amount"] for r in date_records if r["type"] == "支出"))
+
+                st.markdown(f"### {date_label}")
+                st.markdown(f"� {len(date_records)} 条记录 | 💸 支出 ¥{day_expense:.2f} | 💰 收入 ¥{day_income:.2f}")
+                st.divider()
+
+                for idx, rec in enumerate(date_records, 1):
+                    type_icon = "💸" if rec['type'] == "支出" else "💰"
+                    amount_color = "red" if rec['type'] == "支出" else "green"
+
+                    col_info, col_action = st.columns([5, 2])
+                    with col_info:
+                        st.write(f"**{idx}.** 账户：{rec['account']} | {type_icon} {rec['type']} | 分类：{rec['category']}")
+                        st.write(f"金额：:{amount_color}[¥{abs(rec['amount']):.2f}] | 备注：{rec['remark']}", unsafe_allow_html=True)
+                    with col_action:
+                        col_del, col_confirm = st.columns(2)
+                        with col_del:
                             if st.button("🗑️", key=f"del_流水_{rec['id']}", help="删除"):
-                                data["deleted_records"].insert(0, rec)
-                                data["records"].remove(rec)
-                                save_data(data)
-                                st.rerun()
-                        st.divider()
+                                st.session_state[f"confirm_del_{rec['id']}"] = True
+                        if st.session_state.get(f"confirm_del_{rec['id']}"):
+                            with col_confirm:
+                                st.warning("确定删除？")
+                                col_yes, col_no = st.columns(2)
+                                with col_yes:
+                                    if st.button("是", key=f"yes_del_{rec['id']}"):
+                                        data["deleted_records"].insert(0, rec)
+                                        data["records"].remove(rec)
+                                        save_data(data)
+                                        st.session_state[f"confirm_del_{rec['id']}"] = False
+                                        st.rerun()
+                                with col_no:
+                                    if st.button("否", key=f"no_del_{rec['id']}"):
+                                        st.session_state[f"confirm_del_{rec['id']}"] = False
+                                        st.rerun()
+                st.markdown("---")
 
 elif menu == "数据分析":
     st.subheader("📈 数据分析")
@@ -533,7 +581,7 @@ elif menu == "回收站":
     else:
         col_search, col_acc, col_type = st.columns([3, 2, 2])
         with col_search:
-            search_keyword = st.text_input("🔍 搜索关键词", key="trash_search")
+            search_keyword = st.text_input("🔍 搜索备注", key="trash_search")
         with col_acc:
             filter_acc = st.selectbox("🏦 账户筛选", ["全部账户"] + account_list, key="trash_acc")
         with col_type:
@@ -624,12 +672,24 @@ elif menu == "回收站":
                 if st.button("🗑️ 批量删除"):
                     selected_recs = [r for r in filtered_records if r["id"] in st.session_state.selected_ids]
                     if len(selected_recs) > 0:
-                        if st.confirm(f"确定要彻底删除 {len(selected_recs)} 条记录吗？此操作不可撤销！"):
-                            for rec in selected_recs:
-                                data["deleted_records"].remove(rec)
-                            save_data(data)
-                            st.session_state.selected_ids.clear()
-                            st.rerun()
+                        st.session_state["confirm_batch_delete"] = True
+            
+            if st.session_state.get("confirm_batch_delete"):
+                st.warning(f"⚠️ 确定要彻底删除 {len([r for r in filtered_records if r['id'] in st.session_state.selected_ids])} 条记录吗？此操作不可撤销！")
+                col_yes, col_no = st.columns(2)
+                with col_yes:
+                    if st.button("确认删除", type="primary"):
+                        selected_recs = [r for r in filtered_records if r["id"] in st.session_state.selected_ids]
+                        for rec in selected_recs:
+                            data["deleted_records"].remove(rec)
+                        save_data(data)
+                        st.session_state.selected_ids.clear()
+                        st.session_state["confirm_batch_delete"] = False
+                        st.rerun()
+                with col_no:
+                    if st.button("取消"):
+                        st.session_state["confirm_batch_delete"] = False
+                        st.rerun()
 
             grouped_records = {}
             for rec in filtered_records:
@@ -697,9 +757,20 @@ elif menu == "回收站":
                                 st.rerun()
                         with col_delete:
                             if st.button("🗑️", key=f"delete_perm_{rec['id']}", help="彻底删除"):
-                                data["deleted_records"].remove(rec)
-                                save_data(data)
-                                st.rerun()
+                                st.session_state[f"confirm_perm_del_{rec['id']}"] = True
+                        if st.session_state.get(f"confirm_perm_del_{rec['id']}"):
+                            st.warning("⚠️ 确定彻底删除？此操作不可撤销！")
+                            col_yes, col_no = st.columns(2)
+                            with col_yes:
+                                if st.button("确认删除", key=f"yes_perm_del_{rec['id']}", type="primary"):
+                                    data["deleted_records"].remove(rec)
+                                    save_data(data)
+                                    st.session_state[f"confirm_perm_del_{rec['id']}"] = False
+                                    st.rerun()
+                            with col_no:
+                                if st.button("取消", key=f"no_perm_del_{rec['id']}"):
+                                    st.session_state[f"confirm_perm_del_{rec['id']}"] = False
+                                    st.rerun()
                 st.markdown("---")
 
 elif menu == "系统设置":
