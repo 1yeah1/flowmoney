@@ -405,8 +405,10 @@ elif menu == "记账流水":
                     for idx, rec in enumerate(month_records, 1):
                         col_a, col_b = st.columns([5, 1])
                         with col_a:
-                            st.write(f"**{idx}.** 日期：{rec['date']} | 账户：{rec['account']} | {rec['type']} | 分类：{rec['category']}")
-                            st.write(f"金额：¥{abs(rec['amount']):.2f} | 备注：{rec['remark']}")
+                            type_icon = "💸" if rec['type'] == "支出" else "💰"
+                            amount_color = "red" if rec['type'] == "支出" else "green"
+                            st.write(f"**{idx}.** 日期：{rec['date']} | 账户：{rec['account']} | {type_icon} {rec['type']} | 分类：{rec['category']}")
+                            st.write(f"金额：:{amount_color}[¥{abs(rec['amount']):.2f}] | 备注：{rec['remark']}", unsafe_allow_html=True)
                         with col_b:
                             if st.button("🗑️", key=f"del_流水_{rec['id']}", help="删除"):
                                 data["deleted_records"].insert(0, rec)
@@ -529,36 +531,172 @@ elif menu == "回收站":
     if not deleted:
         st.info("回收站为空")
     else:
-        st.caption(f"共 {len(deleted)} 条已删除的记录")
+        col_search, col_acc, col_type = st.columns([3, 2, 2])
+        with col_search:
+            search_keyword = st.text_input("🔍 搜索关键词", key="trash_search")
+        with col_acc:
+            filter_acc = st.selectbox("🏦 账户筛选", ["全部账户"] + account_list, key="trash_acc")
+        with col_type:
+            filter_type = st.selectbox("💹 类型筛选", ["全部", "支出", "收入"], key="trash_type")
+
+        col_cate, col_date_range, col_expire = st.columns([2, 3, 2])
+        with col_cate:
+            all_categories = expense_categories + income_categories
+            filter_cate = st.selectbox("🏷️ 分类筛选", ["全部分类"] + all_categories, key="trash_cate")
+        with col_date_range:
+            col_d1, col_d2 = st.columns(2)
+            with col_d1:
+                start_date = st.date_input("开始日期", date.today() - timedelta(days=30), key="trash_start")
+            with col_d2:
+                end_date = st.date_input("结束日期", date.today(), key="trash_end")
+        with col_expire:
+            expire_options = ["全部", "即将过期（3天内）", "一周内过期", "两周内过期", "本月内过期", "自定义天数"]
+            expire_filter = st.selectbox("⏳ 剩余时间", expire_options, key="trash_expire")
+            custom_days = 0
+            if expire_filter == "自定义天数":
+                custom_days = st.number_input("输入天数", min_value=1, max_value=30, value=7, key="trash_custom_days")
+
         today = date.today()
-        for idx, rec in enumerate(deleted, 1):
+        filtered_records = []
+        for rec in deleted:
             rec_date = date.fromisoformat(rec["date"])
-            days_since_delete = (today - rec_date).days
-            days_left = 30 - days_since_delete
+            days_left = 30 - (today - rec_date).days
             
-            if days_left <= 3:
-                expire_style = ":red[⚠️ 仅剩 {} 天]".format(days_left)
-            elif days_left <= 7:
-                expire_style = ":orange[⚡ 仅剩 {} 天]".format(days_left)
-            else:
-                expire_style = f"剩余 {days_left} 天"
+            if search_keyword and search_keyword.lower() not in rec.get("remark", "").lower():
+                continue
+            if filter_acc != "全部账户" and rec.get("account") != filter_acc:
+                continue
+            if filter_type != "全部" and rec.get("type") != filter_type:
+                continue
+            if filter_cate != "全部分类" and rec.get("category") != filter_cate:
+                continue
+            if not (start_date <= rec_date <= end_date):
+                continue
             
-            col_a, col_b, col_c = st.columns([4, 1, 1])
-            with col_a:
-                st.write(f"**{idx}.** 日期：{rec['date']} | 账户：{rec['account']} | {rec['type']} | 分类：{rec['category']}")
-                st.write(f"金额：¥{abs(rec['amount']):.2f} | 备注：{rec['remark']} | {expire_style}")
-            with col_b:
-                if st.button("♻️ 还原", key=f"restore_{rec['id']}"):
-                    data["records"].insert(0, rec)
-                    data["deleted_records"].remove(rec)
-                    save_data(data)
+            if expire_filter == "即将过期（3天内）" and days_left > 3:
+                continue
+            elif expire_filter == "一周内过期" and days_left > 7:
+                continue
+            elif expire_filter == "两周内过期" and days_left > 14:
+                continue
+            elif expire_filter == "本月内过期" and days_left > 30:
+                continue
+            elif expire_filter == "自定义天数" and days_left > custom_days:
+                continue
+            
+            filtered_records.append(rec)
+
+        filtered_records.sort(key=lambda x: x["date"], reverse=True)
+
+        if not filtered_records:
+            st.info("暂无符合条件的记录")
+        else:
+            st.caption(f"共 {len(filtered_records)} 条记录（总计 {len(deleted)} 条）")
+
+            if "selected_ids" not in st.session_state:
+                st.session_state.selected_ids = set()
+            if "select_all_trash" not in st.session_state:
+                st.session_state.select_all_trash = False
+
+            col_select_all, col_deselect, col_count, col_action1, col_action2 = st.columns([2, 2, 2, 2, 2])
+            with col_select_all:
+                if st.button("☑️ 全选"):
+                    for rec in filtered_records:
+                        st.session_state.selected_ids.add(rec["id"])
                     st.rerun()
-            with col_c:
-                if st.button("❌ 彻底删除", key=f"delete_perm_{rec['id']}"):
-                    data["deleted_records"].remove(rec)
-                    save_data(data)
+            with col_deselect:
+                if st.button("☐ 取消全选"):
+                    st.session_state.selected_ids.clear()
                     st.rerun()
-            st.divider()
+            with col_count:
+                st.info(f"已选中 {len(st.session_state.selected_ids)} 条")
+            with col_action1:
+                if st.button("♻️ 批量还原"):
+                    selected_recs = [r for r in filtered_records if r["id"] in st.session_state.selected_ids]
+                    for rec in selected_recs:
+                        data["records"].insert(0, rec)
+                        data["deleted_records"].remove(rec)
+                    save_data(data)
+                    st.session_state.selected_ids.clear()
+                    st.rerun()
+            with col_action2:
+                if st.button("🗑️ 批量删除"):
+                    selected_recs = [r for r in filtered_records if r["id"] in st.session_state.selected_ids]
+                    if len(selected_recs) > 0:
+                        if st.confirm(f"确定要彻底删除 {len(selected_recs)} 条记录吗？此操作不可撤销！"):
+                            for rec in selected_recs:
+                                data["deleted_records"].remove(rec)
+                            save_data(data)
+                            st.session_state.selected_ids.clear()
+                            st.rerun()
+
+            grouped_records = {}
+            for rec in filtered_records:
+                rec_date = date.fromisoformat(rec["date"])
+                date_key = rec["date"]
+                if date_key not in grouped_records:
+                    grouped_records[date_key] = []
+                grouped_records[date_key].append(rec)
+
+            for date_key, date_records in grouped_records.items():
+                date_obj = date.fromisoformat(date_key)
+                days_diff = (today - date_obj).days
+                
+                if days_diff == 0:
+                    date_label = "📅 今天"
+                elif days_diff == 1:
+                    date_label = "📅 昨天"
+                elif days_diff == 2:
+                    date_label = "📅 前天"
+                else:
+                    date_label = f"📅 {date_key}"
+
+                day_income = sum(r["amount"] for r in date_records if r["type"] == "收入")
+                day_expense = abs(sum(r["amount"] for r in date_records if r["type"] == "支出"))
+
+                st.markdown(f"### {date_label}")
+                st.markdown(f"📝 {len(date_records)} 条记录 | 💸 支出 ¥{day_expense:.2f} | 💰 收入 ¥{day_income:.2f}")
+                st.divider()
+
+                for idx, rec in enumerate(date_records, 1):
+                    rec_date = date.fromisoformat(rec["date"])
+                    days_left = 30 - (today - rec_date).days
+                    
+                    if days_left <= 3:
+                        expire_style = ":red[⚠️ 仅剩 {} 天]".format(days_left)
+                    elif days_left <= 7:
+                        expire_style = ":orange[⚡ 仅剩 {} 天]".format(days_left)
+                    else:
+                        expire_style = f"剩余 {days_left} 天"
+
+                    type_icon = "💸" if rec['type'] == "支出" else "💰"
+                    amount_color = "red" if rec['type'] == "支出" else "green"
+
+                    col_check, col_info, col_action = st.columns([0.5, 5, 2])
+                    with col_check:
+                        cb_key = f"cb_trash_{idx}_{rec['id']}"
+                        is_selected = rec["id"] in st.session_state.selected_ids
+                        if st.checkbox("", value=is_selected, key=cb_key):
+                            st.session_state.selected_ids.add(rec["id"])
+                        else:
+                            st.session_state.selected_ids.discard(rec["id"])
+                    with col_info:
+                        st.write(f"**{idx}.** 账户：{rec['account']} | {type_icon} {rec['type']} | 分类：{rec['category']}")
+                        st.write(f"金额：:{amount_color}[¥{abs(rec['amount']):.2f}] | 备注：{rec['remark']} | {expire_style}", unsafe_allow_html=True)
+                    with col_action:
+                        col_restore, col_delete = st.columns(2)
+                        with col_restore:
+                            if st.button("♻️", key=f"restore_{rec['id']}", help="还原"):
+                                data["records"].insert(0, rec)
+                                data["deleted_records"].remove(rec)
+                                save_data(data)
+                                st.rerun()
+                        with col_delete:
+                            if st.button("🗑️", key=f"delete_perm_{rec['id']}", help="彻底删除"):
+                                data["deleted_records"].remove(rec)
+                                save_data(data)
+                                st.rerun()
+                st.markdown("---")
 
 elif menu == "系统设置":
     st.subheader("⚙️ 系统设置")
