@@ -1,0 +1,9 @@
+{
+  "records": [],
+  "deleted_records": [],
+  "month_budget": 3000,
+  "dark_mode": false,
+  "expense_categories": ["餐饮", "交通", "购物", "娱乐", "学习", "考级考证", "住宿", "医疗", "其他"],
+  "income_categories": ["工资", "兼职", "奖学金", "其他"],
+  "accounts": ["现金", "微信", "支付宝", "银行卡"]
+}

@@ -1,0 +1,13 @@
+# 忽略数据文件
+account_data.json
+
+# 忽略 Python 缓存
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 忽略编辑器临时文件
+*.swp
+*.bak
+.DS_Store

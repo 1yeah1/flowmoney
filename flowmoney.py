@@ -22,7 +22,7 @@ def init_data():
             "month_budget": 3000,
             "dark_mode": False,
             "expense_categories": ["餐饮", "交通", "购物", "娱乐", "学习", "住宿", "医疗", "其他"],
-            "income_categories": ["工资", "兼职", "奖学金", "理财", "投资分红", "礼金", "其他"],
+            "income_categories": ["工资", "兼职", "奖学金",  "其他"],
             "accounts": ["现金", "微信", "支付宝", "银行卡"]
         }
         with open(DATA_FILE, "w", encoding="utf-8") as f:
@@ -127,9 +127,13 @@ if menu == "首页仪表盘":
     else:
         filter_records = records
 
+    # 始终基于所有账户计算总支出和剩余预算
+    all_month_income, all_month_expense = get_month_stat(records)
+    left_budget = budget - all_month_expense
+    
+    # 只在选择特定账户时显示该账户的支出
     month_income, month_expense = get_month_stat(filter_records)
     today_cost = get_today_cost(filter_records)
-    left_budget = budget - month_expense
 
     today = date.today()
     last_day = (date(today.year, today.month + 1, 1) - timedelta(days=1)).day
@@ -196,7 +200,7 @@ elif menu == "添加记账":
             col_a, col_b = st.columns(2)
             with col_a:
                 st.markdown("**💸 支出分类推荐：**")
-                exp_recommend = ["餐饮", "交通", "购物", "娱乐", "学习", "住宿", "医疗", "健身", "通讯", "水果", "日用品"]
+                exp_recommend = ["餐饮", "交通", "购物", "娱乐", "学习", "住宿", "医疗", "健身", "通讯", "日用品"]
                 exp_filtered = [t for t in exp_recommend if t not in expense_categories]
                 if exp_filtered:
                     cols = st.columns(4)
@@ -246,7 +250,7 @@ elif menu == "添加记账":
             col_a, col_b = st.columns(2)
             with col_a:
                 st.markdown("**💰 收入分类推荐：**")
-                inc_recommend = ["工资", "兼职", "奖金", "佣金", "投资", "租赁", "理财", "礼金", "退休金", "补偿"]
+                inc_recommend = ["工资", "兼职", "奖学金", "理财", "投资", "红包"]
                 inc_filtered = [t for t in inc_recommend if t not in income_categories]
                 if inc_filtered:
                     cols = st.columns(4)
@@ -319,13 +323,19 @@ elif menu == "添加记账":
 
     current_categories = income_categories if bill_type == "收入" else expense_categories
 
+    col_amount, col_date = st.columns(2)
+    with col_amount:
+        amount = st.number_input("金额", min_value=0.01, step=0.01, key="add_amount")
+    with col_date:
+        bill_date = st.date_input("选择日期", date.today(), key="add_date")
+
     with st.form("add_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
         with col1:
             select_cate = st.selectbox("选择分类", current_categories, key="add_cate")
         with col2:
-            amount = st.number_input("金额", min_value=0.01, step=0.01, key="add_amount")
-            bill_date = st.date_input("选择日期", date.today(), key="add_date")
+            st.write("")
+            st.write("")
 
         remark = st.text_input("备注信息（选填）", key="add_remark")
         submit_btn = st.form_submit_button("提交记账")
@@ -648,14 +658,14 @@ elif menu == "回收站":
             with col_select_all:
                 if st.button("☑️ 全选"):
                     st.session_state.selected_ids = set(rec["id"] for rec in filtered_records)
-                    for i, rec in enumerate(filtered_records):
-                        st.session_state[f"cb_trash_{i}"] = True
+                    for rec in filtered_records:
+                        st.session_state[f"cb_trash_{rec['id']}"] = True
                     st.rerun()
             with col_deselect:
                 if st.button("☐ 取消全选"):
                     st.session_state.selected_ids.clear()
-                    for i, rec in enumerate(filtered_records):
-                        st.session_state[f"cb_trash_{i}"] = False
+                    for rec in filtered_records:
+                        st.session_state[f"cb_trash_{rec['id']}"] = False
                     st.rerun()
             with col_count:
                 st.info(f"已选中 {len(st.session_state.selected_ids)} 条")
@@ -721,8 +731,7 @@ elif menu == "回收站":
                 st.divider()
 
                 for idx, rec in enumerate(date_records, 1):
-                    cb_key = f"cb_trash_{global_idx}"
-                    global_idx += 1
+                    cb_key = f"cb_trash_{rec['id']}"
                     rec_date = date.fromisoformat(rec["date"])
                     days_left = 30 - (today - rec_date).days
                     
@@ -738,8 +747,9 @@ elif menu == "回收站":
 
                     col_check, col_info, col_action = st.columns([0.5, 5, 2])
                     with col_check:
-                        is_selected = rec["id"] in st.session_state.selected_ids
-                        checked = st.checkbox("", value=is_selected, key=cb_key)
+                        if cb_key not in st.session_state:
+                            st.session_state[cb_key] = rec["id"] in st.session_state.selected_ids
+                        checked = st.checkbox("", key=cb_key)
                         if checked:
                             st.session_state.selected_ids.add(rec["id"])
                         else:
