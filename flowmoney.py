@@ -510,6 +510,48 @@ elif menu == "数据分析":
         if not ana_records:
             st.warning("所选时间段/账户暂无数据")
         else:
+            # ===== 顶部统计卡片 =====
+            total_income = sum(r["amount"] for r in ana_records if r["type"] == "收入")
+            total_expense = abs(sum(r["amount"] for r in ana_records if r["type"] == "支出"))
+            net_savings = total_income - total_expense
+            days_count = (ana_end - ana_start).days + 1
+            avg_daily_expense = total_expense / days_count if days_count > 0 else 0
+            transaction_count = len(ana_records)
+
+            st.markdown("### 📊 财务概览")
+            col_s1, col_s2, col_s3, col_s4 = st.columns(4)
+            with col_s1:
+                st.metric("💰 总收入", f"¥{total_income:.2f}", help="所选时间段内的总收入")
+            with col_s2:
+                st.metric("💸 总支出", f"¥{total_expense:.2f}", help="所选时间段内的总支出")
+            with col_s3:
+                savings_delta = "结余" if net_savings >= 0 else "超支"
+                st.metric("💵 净结余", f"¥{net_savings:.2f}", delta=savings_delta,
+                         delta_color="normal" if net_savings >= 0 else "inverse")
+            with col_s4:
+                st.metric("📅 日均支出", f"¥{avg_daily_expense:.2f}", 
+                         help=f"基于 {days_count} 天计算")
+
+            col_s5, col_s6, col_s7, col_s8 = st.columns(4)
+            with col_s5:
+                st.metric("📝 交易笔数", f"{transaction_count} 笔")
+            with col_s6:
+                max_expense_cat = max(group_by_category(ana_records, "支出").items(), 
+                                     key=lambda x: x[1], default=("暂无", 0))
+                st.metric("🔥 最高支出分类", max_expense_cat[0], 
+                         delta=f"¥{max_expense_cat[1]:.2f}" if max_expense_cat[1] > 0 else None)
+            with col_s7:
+                max_income_cat = max(group_by_category(ana_records, "收入").items(), 
+                                    key=lambda x: x[1], default=("暂无", 0))
+                st.metric("💎 最高收入分类", max_income_cat[0],
+                         delta=f"¥{max_income_cat[1]:.2f}" if max_income_cat[1] > 0 else None)
+            with col_s8:
+                budget_used = (total_expense / data["month_budget"] * 100) if data["month_budget"] > 0 else 0
+                st.metric("📊 预算使用率", f"{budget_used:.1f}%",
+                         delta="⚠️ 超预算" if budget_used > 100 else "✅ 正常",
+                         delta_color="inverse" if budget_used > 100 else "normal")
+
+            st.divider()
             tab1, tab2, tab3, tab4 = st.tabs(["🍽️ 支出分类", "💰 收入分类", "📅 月度对比", "📈 每日趋势"])
 
             with tab1:
