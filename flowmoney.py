@@ -12,6 +12,136 @@ st.set_page_config(
     layout="wide"
 )
 
+# 添加自定义样式 - 视觉层次与交互体验优化
+st.markdown("""
+    <style>
+    /* ===== 视觉层次 ===== */
+    /* 卡片样式 */
+    .metric-card {
+        background: linear-gradient(145deg, #ffffff, #f0f0f0);
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .metric-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+        border-color: rgba(79, 70, 229, 0.2);
+    }
+    
+    /* 收入卡片 - 绿色主题 */
+    .metric-card.income {
+        background: linear-gradient(145deg, #ecfdf5, #d1fae5);
+        border-color: rgba(16, 185, 129, 0.2);
+    }
+    .metric-card.income:hover {
+        box-shadow: 0 12px 30px rgba(16, 185, 129, 0.15);
+        border-color: rgba(16, 185, 129, 0.4);
+    }
+    
+    /* 支出卡片 - 红色主题 */
+    .metric-card.expense {
+        background: linear-gradient(145deg, #fef2f2, #fee2e2);
+        border-color: rgba(239, 68, 68, 0.2);
+    }
+    .metric-card.expense:hover {
+        box-shadow: 0 12px 30px rgba(239, 68, 68, 0.15);
+        border-color: rgba(239, 68, 68, 0.4);
+    }
+    
+    /* 正常状态卡片 - 蓝色主题 */
+    .metric-card.normal {
+        background: linear-gradient(145deg, #eff6ff, #dbeafe);
+        border-color: rgba(59, 130, 246, 0.2);
+    }
+    
+    /* 警告状态卡片 - 橙色主题 */
+    .metric-card.warning {
+        background: linear-gradient(145deg, #fffbeb, #fef3c7);
+        border-color: rgba(251, 191, 36, 0.3);
+    }
+    
+    /* 危险状态卡片 - 红色主题 */
+    .metric-card.danger {
+        background: linear-gradient(145deg, #fef2f2, #fee2e2);
+        border-color: rgba(239, 68, 68, 0.3);
+    }
+    
+    /* ===== 交互效果 ===== */
+    /* 按钮悬停效果：上移2px + 阴影 */
+    .stButton > button {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border-radius: 10px;
+        font-weight: 600;
+    }
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    }
+    
+    /* 卡片悬停效果：上移4px + 阴影增强 */
+    .stMetric {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border-radius: 16px;
+    }
+    .stMetric:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+    }
+    
+    /* 进度条圆角样式 */
+    .stProgress > div > div {
+        border-radius: 12px;
+        height: 8px;
+    }
+    
+    /* 页面平滑滚动 */
+    * {
+        scroll-behavior: smooth;
+    }
+    
+    /* 标签页样式 */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        padding: 8px;
+        background: rgba(79, 70, 229, 0.05);
+        border-radius: 12px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 8px;
+        padding: 10px 20px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    .stTabs [data-baseweb="tab"]:hover {
+        background: rgba(79, 70, 229, 0.1);
+    }
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {
+        background: linear-gradient(135deg, #4F46E5, #7C3AED);
+        color: white;
+    }
+    
+    /* 输入框样式 */
+    .stTextInput > div > div > input {
+        border-radius: 10px;
+        border: 2px solid rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+    }
+    .stTextInput > div > div > input:focus {
+        border-color: #4F46E5;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+    
+    /* 选择框样式 */
+    .stSelectbox > div > div > select {
+        border-radius: 10px;
+        border: 2px solid rgba(0, 0, 0, 0.1);
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 DATA_FILE = "account_data.json"
 
 def init_data():
@@ -63,13 +193,160 @@ expense_categories = data["expense_categories"]
 income_categories = data["income_categories"]
 account_list = data["accounts"]
 
-st.title("💰 FlowMoney ")
-st.caption("大学生个人财务管理")
+# 响应式顶部导航栏设计
+st.markdown("""
+    <style>
+    .main-nav {
+        background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+        border-radius: 16px;
+        padding: 20px 24px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+        margin-bottom: 20px;
+    }
+    .nav-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .nav-title {
+        font-size: 24px;
+        font-weight: 700;
+        color: white;
+    }
+    .nav-info {
+        color: rgba(255,255,255,0.9);
+        font-size: 14px;
+        display: flex;
+        gap: 20px;
+    }
+    .nav-buttons-container {
+        display: flex;
+        gap: 8px;
+        margin-top: 16px;
+        flex-wrap: wrap;
+    }
+    
+    /* 中等屏幕适配 (平板) */
+    @media (max-width: 900px) {
+        .main-nav {
+            padding: 16px 16px;
+        }
+        .nav-title {
+            font-size: 20px;
+        }
+        .nav-info {
+            font-size: 12px;
+            gap: 12px;
+        }
+        .nav-buttons-container {
+            gap: 6px;
+        }
+    }
+    
+    /* 小屏幕适配 (手机) */
+    @media (max-width: 600px) {
+        .main-nav {
+            padding: 12px 12px;
+            border-radius: 12px;
+        }
+        .nav-row {
+            flex-direction: column;
+            gap: 10px;
+            text-align: center;
+        }
+        .nav-title {
+            font-size: 18px;
+        }
+        .nav-info {
+            font-size: 11px;
+            gap: 8px;
+        }
+        .nav-buttons-container {
+            justify-content: center;
+            gap: 4px;
+        }
+    }
+    </style>
+""", unsafe_allow_html=True)
 
-menu = st.sidebar.radio(
-    "功能导航",
-    ["首页仪表盘", "记账流水", "添加记账", "数据分析", "回收站", "系统设置"]
-)
+# 导航菜单项
+menu_items = [
+    {"name": "首页仪表盘", "label": "概览"},
+    {"name": "记账流水", "label": "流水"},
+    {"name": "添加记账", "label": "记账"},
+    {"name": "数据分析", "label": "分析"},
+    {"name": "回收站", "label": "回收"},
+    {"name": "系统设置", "label": "设置"}
+]
+
+# 获取当前选中的菜单
+selected_menu = st.session_state.get("selected_menu", "首页仪表盘")
+
+# 渲染导航栏头部
+st.markdown(f"""
+<div class="main-nav">
+    <div class="nav-row">
+        <div class="nav-title">💰 FlowMoney</div>
+        <div class="nav-info">
+            <span>📅 {datetime.now().strftime('%Y年%m月%d日')}</span>
+            <span>📝 总记录: {len(data['records'])}条</span>
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# 创建导航按钮（使用 Streamlit 原生按钮）
+cols = st.columns([1,1,1,1,1,1])  # 6个等宽列
+
+for i, item in enumerate(menu_items):
+    with cols[i]:
+        is_selected = (selected_menu == item["name"])
+        
+        if is_selected:
+            # 选中状态：白色背景 + 紫色文字
+            st.markdown("""
+                <style>
+                div[data-testid="stButton"] > button {
+                    background-color: white !important;
+                    color: #4F46E5 !important;
+                    border-radius: 10px;
+                    padding: 10px 16px;
+                    font-weight: 600;
+                    font-size: 14px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                    transition: all 0.3s ease;
+                }
+                div[data-testid="stButton"] > button:hover {
+                    transform: translateY(-2px);
+                }
+                </style>
+            """, unsafe_allow_html=True)
+        else:
+            # 未选中状态：深紫色背景 + 白色文字
+            st.markdown("""
+                <style>
+                div[data-testid="stButton"] > button {
+                    background-color: #3730A3 !important;
+                    color: white !important;
+                    border-radius: 10px;
+                    padding: 10px 16px;
+                    font-weight: 600;
+                    font-size: 14px;
+                    border: none !important;
+                    transition: all 0.3s ease;
+                }
+                div[data-testid="stButton"] > button:hover {
+                    background-color: #4338CA !important;
+                    transform: translateY(-2px);
+                }
+                </style>
+            """, unsafe_allow_html=True)
+        
+        if st.button(item["label"], key=f"nav_{item['name']}", use_container_width=True):
+            st.session_state["selected_menu"] = item["name"]
+            st.rerun()
+
+menu = st.session_state.get("selected_menu", "首页仪表盘")
 
 def filter_records_by_date_account(records, start_date, end_date, target_account=None):
     res = []
@@ -144,36 +421,126 @@ if menu == "首页仪表盘":
     else:
         daily_budget = 0
 
+    # 预算状态判断
     if left_budget < 0:
-        st.error(f"⚠️ 本月已超支 ¥{abs(left_budget):.2f}！当前预算 ¥{budget:.2f}，已支出 ¥{month_expense:.2f}")
+        budget_status = "danger"
+        status_text = "❌ 超支"
     elif left_budget < budget * 0.2:
-        st.warning(f"⚡ 预算剩余不足 20%，仅剩 ¥{left_budget:.2f}，请注意控制支出")
+        budget_status = "warning"
+        status_text = "⚠️ 紧张"
+    else:
+        budget_status = "normal"
+        status_text = "✅ 正常"
 
+    # 预算警告提示
+    if left_budget < 0:
+        st.markdown(f"""
+            <div style="background: linear-gradient(135deg, #fee2e2, #fecaca); border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #ef4444;">
+                <strong style="color: #dc2626;">⚠️ 本月已超支 ¥{abs(left_budget):.2f}！</strong><br>
+                <span style="color: #991b1b; font-size: 14px;">当前预算 ¥{budget:.2f}，已支出 ¥{month_expense:.2f}</span>
+            </div>
+        """, unsafe_allow_html=True)
+    elif left_budget < budget * 0.2:
+        st.markdown(f"""
+            <div style="background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
+                <strong style="color: #d97706;">⚡ 预算剩余不足 20%</strong><br>
+                <span style="color: #b45309; font-size: 14px;">仅剩 ¥{left_budget:.2f}，请注意控制支出</span>
+            </div>
+        """, unsafe_allow_html=True)
+
+    # 第一行卡片：主要财务数据（紫色主题配色）
     col1, col2, col3, col4 = st.columns(4)
+    
     with col1:
-        st.metric("本月总收入", f"¥{month_income:.2f}", delta_color="normal")
+        st.markdown(f"""
+            <div style="background: linear-gradient(145deg, #ede9fe, #ddd6fe); border-radius: 16px; padding: 20px; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.15); border: 1px solid rgba(139, 92, 246, 0.25); transition: all 0.3s ease;" class="hover-card">
+                <div style="font-size: 13px; color: #7c3aed; margin-bottom: 8px;">💰 本月总收入</div>
+                <div style="font-size: 28px; font-weight: 700; color: #5b21b6;">¥{month_income:.2f}</div>
+            </div>
+        """, unsafe_allow_html=True)
+    
     with col2:
-        st.metric("本月总支出", f"¥{month_expense:.2f}", delta_color="inverse")
+        st.markdown(f"""
+            <div style="background: linear-gradient(145deg, #fce7f3, #fbcfe8); border-radius: 16px; padding: 20px; box-shadow: 0 4px 15px rgba(236, 72, 153, 0.15); border: 1px solid rgba(236, 72, 153, 0.25); transition: all 0.3s ease;" class="hover-card">
+                <div style="font-size: 13px; color: #db2777; margin-bottom: 8px;">💸 本月总支出</div>
+                <div style="font-size: 28px; font-weight: 700; color: #be185d;">¥{month_expense:.2f}</div>
+            </div>
+        """, unsafe_allow_html=True)
+    
     with col3:
-        st.metric("今日花费", f"¥{today_cost:.2f}")
+        st.markdown(f"""
+            <div style="background: linear-gradient(145deg, #fde68a, #fcd34d); border-radius: 16px; padding: 20px; box-shadow: 0 4px 15px rgba(251, 191, 36, 0.2); border: 1px solid rgba(251, 191, 36, 0.3); transition: all 0.3s ease;" class="hover-card">
+                <div style="font-size: 13px; color: #ca8a04; margin-bottom: 8px;">📅 今日花费</div>
+                <div style="font-size: 28px; font-weight: 700; color: #a16207;">¥{today_cost:.2f}</div>
+            </div>
+        """, unsafe_allow_html=True)
+    
     with col4:
-        st.metric("剩余预算", f"¥{left_budget:.2f}", delta="inverse" if left_budget < 0 else "normal")
+        # 剩余预算根据状态使用不同紫色调
+        if left_budget < 0:
+            bg_color, border_color, text_color, value_color = "#fce7f3", "rgba(236, 72, 153, 0.3)", "#db2777", "#be185d"
+        elif left_budget < budget * 0.2:
+            bg_color, border_color, text_color, value_color = "#fef3c7", "rgba(251, 191, 36, 0.3)", "#ca8a04", "#a16207"
+        else:
+            bg_color, border_color, text_color, value_color = "#e0e7ff", "rgba(99, 102, 241, 0.25)", "#6366f1", "#4f46e5"
+        
+        st.markdown(f"""
+            <div style="background: linear-gradient(145deg, {bg_color}, #ffffff); border-radius: 16px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid {border_color}; transition: all 0.3s ease;" class="hover-card">
+                <div style="font-size: 13px; color: {text_color}; margin-bottom: 8px;">📊 剩余预算</div>
+                <div style="font-size: 28px; font-weight: 700; color: {value_color};">¥{left_budget:.2f}</div>
+            </div>
+        """, unsafe_allow_html=True)
 
+    # 第二行卡片：辅助信息（紫色主题配色）
     col5, col6, col7 = st.columns(3)
+    
     with col5:
-        st.metric("本月剩余天数", f"{remaining_days} 天")
+        st.markdown(f"""
+            <div style="background: linear-gradient(145deg, #e0e7ff, #c7d2fe); border-radius: 16px; padding: 20px; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.25); transition: all 0.3s ease;" class="hover-card">
+                <div style="font-size: 13px; color: #6366f1; margin-bottom: 8px;">📆 本月剩余天数</div>
+                <div style="font-size: 28px; font-weight: 700; color: #4f46e5;">{remaining_days} 天</div>
+            </div>
+        """, unsafe_allow_html=True)
+    
     with col6:
         if left_budget < 0:
-            st.metric("今日可用", f"⚠️ 已超支", delta_color="inverse")
+            bg_color, border_color, text_color, value_color = "#fce7f3", "rgba(236, 72, 153, 0.3)", "#db2777", "#be185d"
+            daily_text = "⚠️ 已超支"
         else:
-            st.metric("今日可用", f"¥{daily_budget:.2f}")
+            bg_color, border_color, text_color, value_color = "#ede9fe", "rgba(139, 92, 246, 0.25)", "#7c3aed", "#5b21b6"
+            daily_text = f"¥{daily_budget:.2f}"
+        
+        st.markdown(f"""
+            <div style="background: linear-gradient(145deg, {bg_color}, #ffffff); border-radius: 16px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid {border_color}; transition: all 0.3s ease;" class="hover-card">
+                <div style="font-size: 13px; color: {text_color}; margin-bottom: 8px;">🎯 今日可用</div>
+                <div style="font-size: 28px; font-weight: 700; color: {value_color};">{daily_text}</div>
+            </div>
+        """, unsafe_allow_html=True)
+    
     with col7:
         if left_budget < 0:
-            st.metric("状态", "❌ 超支", delta_color="inverse")
+            bg_color, border_color, text_color = "#fce7f3", "rgba(236, 72, 153, 0.3)", "#db2777"
         elif left_budget < budget * 0.2:
-            st.metric("状态", "⚠️ 紧张", delta_color="off")
+            bg_color, border_color, text_color = "#fef3c7", "rgba(251, 191, 36, 0.3)", "#ca8a04"
         else:
-            st.metric("状态", "✅ 正常", delta_color="normal")
+            bg_color, border_color, text_color = "#d1fae5", "rgba(16, 185, 129, 0.25)", "#059669"
+        
+        st.markdown(f"""
+            <div style="background: linear-gradient(145deg, {bg_color}, #ffffff); border-radius: 16px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid {border_color}; transition: all 0.3s ease;" class="hover-card">
+                <div style="font-size: 13px; color: {text_color}; margin-bottom: 8px;">📈 状态</div>
+                <div style="font-size: 24px; font-weight: 700; color: {text_color};">{status_text}</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    # 添加卡片悬停动画效果
+    st.markdown("""
+        <style>
+        .hover-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15) !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
 
     with st.expander("📋 今日可用计算规则"):
         st.markdown("""
@@ -534,23 +901,20 @@ elif menu == "数据分析":
 
             col_s5, col_s6, col_s7, col_s8 = st.columns(4)
             with col_s5:
-                st.metric("📝 交易笔数", f"{transaction_count} 笔")
-            with col_s6:
                 max_expense_cat = max(group_by_category(ana_records, "支出").items(), 
                                      key=lambda x: x[1], default=("暂无", 0))
-                st.metric("🔥 最高支出分类", max_expense_cat[0], 
+                st.metric("� 最高支出分类", max_expense_cat[0], 
                          delta=f"¥{max_expense_cat[1]:.2f}" if max_expense_cat[1] > 0 else None)
-            with col_s7:
+            with col_s6:
                 max_income_cat = max(group_by_category(ana_records, "收入").items(), 
                                     key=lambda x: x[1], default=("暂无", 0))
-                st.metric("💎 最高收入分类", max_income_cat[0],
+                st.metric("� 最高收入分类", max_income_cat[0],
                          delta=f"¥{max_income_cat[1]:.2f}" if max_income_cat[1] > 0 else None)
-            with col_s8:
+            with col_s7:
                 budget_used = (total_expense / data["month_budget"] * 100) if data["month_budget"] > 0 else 0
                 st.metric("📊 预算使用率", f"{budget_used:.1f}%",
                          delta="⚠️ 超预算" if budget_used > 100 else "✅ 正常",
                          delta_color="inverse" if budget_used > 100 else "normal")
-
             st.divider()
             tab1, tab2, tab3, tab4 = st.tabs(["🍽️ 支出分类", "💰 收入分类", "📅 月度对比", "📈 每日趋势"])
 

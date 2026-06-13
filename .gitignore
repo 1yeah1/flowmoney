@@ -1,13 +1,26 @@
-# 忽略数据文件
-account_data.json
+# Python 虚拟环境
+venv/
+.venv/
+env/
 
-# 忽略 Python 缓存
+# Python 编译文件
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# 忽略编辑器临时文件
+# Streamlit 相关配置
+.streamlit/secrets.toml
+.streamlit/config.toml
+
+# 编辑器配置
+.vscode/
+.idea/
 *.swp
-*.bak
-.DS_Store
+*.swo
+
+# 日志文件
+*.log
+
+# 本地数据文件（如果是你运行生成的）
+account_data.json
