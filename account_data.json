@@ -1,11 +1,11 @@
 {
   "records": [
     {
-      "id": "20260615202833",
-      "type": "收入",
-      "category": "理财",
+      "id": "20260615205056",
+      "type": "支出",
+      "category": "住宿",
       "account": "现金",
-      "amount": 10.0,
+      "amount": -0.01,
       "date": "2026-06-15",
       "remark": ""
     },
@@ -73,7 +73,17 @@
     "支付宝",
     "银行卡"
   ],
-  "deleted_records": [],
+  "deleted_records": [
+    {
+      "id": "20260615202833",
+      "type": "收入",
+      "category": "理财",
+      "account": "现金",
+      "amount": 10.0,
+      "date": "2026-06-15",
+      "remark": ""
+    }
+  ],
   "expense_categories": [
     "住宿",
     "其他",
