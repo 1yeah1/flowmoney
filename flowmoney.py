@@ -398,6 +398,162 @@ if menu == "首页仪表盘":
     records = data["records"]
     budget = data["month_budget"]
 
+    # ===== 1. 新用户引导提示（当没有记录时显示） =====
+    if len(records) == 0:
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #dbeafe, #bfdbfe); border-radius: 16px; padding: 24px; margin-bottom: 20px; border-left: 5px solid #3b82f6; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.15);">
+            <h3 style="color: #1e40af; margin-top: 0;">👋 欢迎使用 FlowMoney！</h3>
+            <p style="color: #1e3a8a; font-size: 15px; line-height: 1.8;">
+                看起来你是第一次使用，让我们开始吧！<br>
+                💡 <strong>快速上手：</strong>点击下方【快捷记账】按钮，一键添加你的第一笔支出<br>
+                💰 建议先设置本月预算，帮助你更好地管理开支<br>
+                📊 记账后，这里会显示你的收支统计和分析图表
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # ===== 2. 快捷记账入口（首页显眼的快速记账按钮）=====
+    st.markdown("""
+    <style>
+    .quick-add-section {
+        background: linear-gradient(135deg, #f5f3ff, #ede9fe);
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 20px;
+        border: 1px solid rgba(139, 92, 246, 0.2);
+    }
+    .quick-add-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #7c3aed;
+        margin-bottom: 12px;
+    }
+    .quick-btn {
+        display: inline-block;
+        background: linear-gradient(135deg, #4F46E5, #7C3AED);
+        color: white !important;
+        border-radius: 12px;
+        padding: 10px 18px;
+        margin: 4px;
+        font-size: 13px;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+    }
+    .quick-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    st.markdown('<div class="quick-add-section">', unsafe_allow_html=True)
+    st.markdown('<div class="quick-add-title">⚡ 快捷记账 - 一键记常用消费</div>', unsafe_allow_html=True)
+    
+    # 快捷支出按钮
+    quick_expense = ["🍜 餐饮", "🚌 交通", "🛒 购物", "🎬 娱乐", "📚 学习", "🏠 住宿"]
+    quick_cols = st.columns(6)
+    for i, item in enumerate(quick_expense):
+        with quick_cols[i]:
+            if st.button(item, key=f"quick_exp_{i}", use_container_width=True):
+                st.session_state["selected_menu"] = "添加记账"
+                # 预设快捷记账参数
+                st.session_state["quick_add"] = {"type": "支出", "category": item[2:]}
+                st.rerun()
+    
+    # 快捷收入按钮
+    quick_income = ["💼 工资", "💻 兼职", "🎓 奖学金"]
+    quick_inc_cols = st.columns(3)
+    for i, item in enumerate(quick_income):
+        with quick_inc_cols[i]:
+            if st.button(item, key=f"quick_inc_{i}", use_container_width=True):
+                st.session_state["selected_menu"] = "添加记账"
+                st.session_state["quick_add"] = {"type": "收入", "category": item[2:]}
+                st.rerun()
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # ===== 3. 预算设置入口（首页直接设置）=====
+    with st.expander("⚙️ 设置本月预算"):
+        col_budget, col_btn = st.columns([3, 1])
+        with col_budget:
+            new_budget = st.number_input(
+                "💵 月预算金额（元）", 
+                min_value=0, 
+                max_value=1000000, 
+                value=int(budget),
+                step=100,
+                help="设置每月计划支出的最高金额"
+            )
+        with col_btn:
+            st.markdown("<br>", unsafe_allow_html=True)  # 空白行对齐
+            if st.button("💾 保存", use_container_width=True):
+                data["month_budget"] = float(new_budget)
+                save_data(data)
+                st.success(f"✅ 月预算已更新为 ¥{new_budget:.2f}")
+                st.rerun()
+        
+        st.markdown(f"""
+        <div style="background: #f8fafc; border-radius: 10px; padding: 12px; margin-top: 10px;">
+            <span style="color: #64748b; font-size: 13px;">
+                💡 <strong>提示：</strong>设置预算后，系统会提醒你控制支出。当剩余预算低于 20% 时会显示警告⚠️
+            </span>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # ===== 4. 使用帮助入口 =====
+    with st.expander("❓ 使用帮助 & 功能介绍"):
+        st.markdown("""
+        <div style="background: #f8fafc; border-radius: 12px; padding: 16px; line-height: 1.8;">
+        
+        ### 📚 功能介绍
+            
+        #### 💰 概览页面
+        - 查看本月收支统计卡片
+        - 使用快捷记账按钮快速记录消费
+        - 设置和调整月预算
+        - 根据账户筛选查看数据
+            
+        #### 📝 记账页面
+        - 添加支出和收入记录
+        - 自定义分类（餐饮/交通/购物等）
+        - 管理多个账户（微信/支付宝/银行卡等）
+        - 查看预算超支提醒
+            
+        #### 📊 分析页面
+        - 按月/日/周查看收支趋势
+        - 分类支出占比饼图
+        - 收支趋势折线图
+            
+        #### 📜 流水页面
+        - 查看所有记账记录
+        - 按日期、账户、类型筛选
+        - 搜索记账记录
+        - 删除/恢复误删记录
+            
+        #### ⚙️ 设置页面
+        - 调整月预算
+        - 管理支出/收入分类
+        - 管理记账账户
+        - 数据备份与恢复
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("""
+        <div style="background: #fef3c7; border-radius: 12px; padding: 16px; margin-top: 16px; border-left: 4px solid #f59e0b;">
+        <h4 style="color: #92400e; margin-top: 0;">💡 快速上手技巧</h4>
+        <ul style="color: #78350f; line-height: 2;">
+            <li><strong>快捷记账：</strong>首页顶部有快捷按钮，一键记录常用消费</li>
+            <li><strong>每日记账：</strong>养成习惯，每消费一笔就记录</li>
+            <li><strong>设置预算：</strong>在首页设置本月预算，系统会自动提醒超支</li>
+            <li><strong>定期查看：</strong>每周/每月查看分析报告，了解消费结构</li>
+            <li><strong>误删恢复：</strong>删除的记录会暂存30天，可在回收站恢复</li>
+        </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
     select_acc = st.selectbox("选择查看账户", ["全部账户"] + account_list)
     if select_acc != "全部账户":
         filter_records = [r for r in records if r.get("account", "") == select_acc]
@@ -682,13 +838,25 @@ elif menu == "添加记账":
 
     st.markdown("---")
     st.subheader("📝 记账")
+    
+    # ===== 处理快捷记账自动填充 =====
+    quick_add_info = st.session_state.get("quick_add", None)
+    default_type = quick_add_info.get("type", "支出") if quick_add_info else "支出"
+    default_category = quick_add_info.get("category", "") if quick_add_info else ""
+    if quick_add_info:
+        st.session_state.pop("quick_add", None)  # 清除快捷记账标记
+    
     col_type, col_acc = st.columns(2)
     with col_type:
-        bill_type = st.selectbox("收支类型", ["支出", "收入"], key="bill_type")
+        bill_type = st.selectbox("收支类型", ["支出", "收入"], index=0 if default_type == "支出" else 1, key="bill_type")
     with col_acc:
         select_account = st.selectbox("记账账户", account_list, key="add_acc")
 
     current_categories = income_categories if bill_type == "收入" else expense_categories
+    # 自动选择快捷分类
+    default_cate_index = 0
+    if default_category and default_category in current_categories:
+        default_cate_index = current_categories.index(default_category)
 
     col_amount, col_date = st.columns(2)
     with col_amount:
@@ -699,13 +867,18 @@ elif menu == "添加记账":
     with st.form("add_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
         with col1:
-            select_cate = st.selectbox("选择分类", current_categories, key="add_cate")
+            select_cate = st.selectbox("选择分类", current_categories, index=default_cate_index, key="add_cate")
         with col2:
             st.write("")
             st.write("")
 
         remark = st.text_input("备注信息（选填）", key="add_remark")
-        submit_btn = st.form_submit_button("提交记账")
+        
+        # 如果是快捷记账，显示提示
+        if default_category:
+            st.success(f"⚡ 快捷记账已自动填充：{default_category}")
+        
+        submit_btn = st.form_submit_button("💾 提交记账")
 
         if submit_btn:
             cost_amount = amount if bill_type=="收入" else -amount
