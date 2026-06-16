@@ -1,22 +1,26 @@
+# Python 虚拟环境
 venv/
-env/
 .venv/
+env/
+
+# Python 编译文件
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-account_data.json
-*.json
+# Streamlit 相关配置
+.streamlit/secrets.toml
+.streamlit/config.toml
 
-.streamlit/
-
-.DS_Store
-Thumbs.db
-*.log
-*.tmp
-
+# 编辑器配置
 .vscode/
 .idea/
 *.swp
 *.swo
+
+# 日志文件
+*.log
+
+# 本地数据文件（如果是你运行生成的）
+account_data.json
